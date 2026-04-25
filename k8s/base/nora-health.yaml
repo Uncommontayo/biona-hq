@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: biona-nora-health
+  labels:
+    app: biona-nora-health
+    component: product
+    part-of: biona
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: biona-nora-health
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: biona-nora-health
+        component: product
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: nora-health
+          image: biona-nora-health:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7860
+              name: http
+          env:
+            - name: BIONA_MODEL_PATH
+              value: /models/current.biona
+            - name: AES_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: biona-secrets
+                  key: aes-key
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 90
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+              readOnly: true
+            - name: session-data
+              mountPath: /app/sessions
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: biona-model-pvc
+        - name: session-data
+          persistentVolumeClaim:
+            claimName: nora-session-pvc
+      imagePullSecrets:
+        - name: ghcr-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: biona-nora-health
+  labels:
+    app: biona-nora-health
+spec:
+  selector:
+    app: biona-nora-health
+  ports:
+    - port: 80
+      targetPort: 7860
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nora-session-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

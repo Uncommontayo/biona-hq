@@ -1,0 +1,215 @@
+name: Biona Lab GPU Training
+
+on:
+  workflow_dispatch:
+    inputs:
+      training_phase:
+        description: "Training phase to run"
+        required: true
+        type: choice
+        options:
+          - b5-model-definition
+          - b6-ctc-training
+          - b6-art-training
+          - b7-export-bundle
+          - full-pipeline
+      gpu_type:
+        description: "GPU instance type"
+        required: true
+        type: choice
+        default: "gpu_1x_a100"
+        options:
+          - gpu_1x_a10
+          - gpu_1x_a100
+          - gpu_2x_a100
+      experiment_name:
+        description: "Experiment name (for MLflow tracking)"
+        required: true
+        default: "biona-base-v1"
+
+  push:
+    tags: ["v*.*.*-train"]
+
+jobs:
+
+  # ── Provision GPU on Lambda Labs ────────────────────────────────────────────
+  provision-gpu:
+    name: Provision GPU (${{ github.event.inputs.gpu_type }})
+    runs-on: ubuntu-22.04
+    outputs:
+      instance_id: ${{ steps.provision.outputs.instance_id }}
+      instance_ip: ${{ steps.provision.outputs.instance_ip }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision Lambda Labs instance
+        id: provision
+        env:
+          LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://cloud.lambdalabs.com/api/v1/instance-operations/launch" \
+            -H "Authorization: Bearer $LAMBDA_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "region_name": "us-east-1",
+              "instance_type_name": "${{ github.event.inputs.gpu_type || 'gpu_1x_a100' }}",
+              "ssh_key_names": ["biona-ci"],
+              "name": "biona-training-${{ github.run_id }}"
+            }')
+
+          INSTANCE_ID=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['instance_ids'][0])")
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "Provisioned instance: $INSTANCE_ID"
+
+          # Wait for instance to be running
+          for i in {1..30}; do
+            STATUS=$(curl -s \
+              "https://cloud.lambdalabs.com/api/v1/instances/$INSTANCE_ID" \
+              -H "Authorization: Bearer $LAMBDA_API_KEY" \
+              | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")
+            if [[ "$STATUS" == "active" ]]; then
+              IP=$(curl -s \
+                "https://cloud.lambdalabs.com/api/v1/instances/$INSTANCE_ID" \
+                -H "Authorization: Bearer $LAMBDA_API_KEY" \
+                | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ip'])")
+              echo "instance_ip=$IP" >> $GITHUB_OUTPUT
+              echo "Instance active at $IP"
+              break
+            fi
+            echo "Waiting for instance ($i/30)... status: $STATUS"
+            sleep 20
+          done
+
+  # ── Run training on GPU instance ────────────────────────────────────────────
+  train:
+    name: Run training (${{ github.event.inputs.training_phase }})
+    runs-on: ubuntu-22.04
+    needs: provision-gpu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LAMBDA_SSH_KEY }}" > ~/.ssh/biona_ci
+          chmod 600 ~/.ssh/biona_ci
+          ssh-keyscan -H ${{ needs.provision-gpu.outputs.instance_ip }} >> ~/.ssh/known_hosts
+
+      - name: Sync code to GPU instance
+        run: |
+          rsync -avz \
+            --exclude '.git' \
+            --exclude '__pycache__' \
+            --exclude '*.pyc' \
+            -e "ssh -i ~/.ssh/biona_ci" \
+            biona/lab/ \
+            ubuntu@${{ needs.provision-gpu.outputs.instance_ip }}:/workspace/biona-lab/
+
+      - name: Install dependencies on GPU instance
+        run: |
+          ssh -i ~/.ssh/biona_ci \
+            ubuntu@${{ needs.provision-gpu.outputs.instance_ip }} << 'ENDSSH'
+            cd /workspace/biona-lab
+            pip install -r requirements.txt
+            pip install mlflow wandb
+          ENDSSH
+
+      - name: Run training phase
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          AES_KEY: ${{ secrets.BIONA_AES_KEY }}
+        run: |
+          ssh -i ~/.ssh/biona_ci \
+            ubuntu@${{ needs.provision-gpu.outputs.instance_ip }} \
+            "cd /workspace/biona-lab && \
+             MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }} \
+             WANDB_API_KEY=${{ secrets.WANDB_API_KEY }} \
+             AES_KEY=${{ secrets.BIONA_AES_KEY }} \
+             python train.py \
+               --phase ${{ github.event.inputs.training_phase }} \
+               --experiment ${{ github.event.inputs.experiment_name }} \
+               --output /workspace/output"
+
+      - name: Download training outputs
+        run: |
+          mkdir -p artifacts/
+          scp -i ~/.ssh/biona_ci -r \
+            ubuntu@${{ needs.provision-gpu.outputs.instance_ip }}:/workspace/output/ \
+            artifacts/
+
+      - name: Upload .biona bundle
+        if: contains(github.event.inputs.training_phase, 'export') || github.event.inputs.training_phase == 'full-pipeline'
+        uses: actions/upload-artifact@v4
+        with:
+          name: biona-bundle-${{ github.run_id }}
+          path: artifacts/output/*.biona
+          retention-days: 30
+
+      - name: Upload training metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-metrics-${{ github.run_id }}
+          path: artifacts/output/metrics/
+          retention-days: 90
+
+  # ── Validate exported bundle against contract ───────────────────────────────
+  validate-bundle:
+    name: Validate .biona bundle
+    runs-on: ubuntu-22.04
+    needs: train
+    if: contains(github.event.inputs.training_phase, 'export') || github.event.inputs.training_phase == 'full-pipeline'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download bundle artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: biona-bundle-${{ github.run_id }}
+          path: artifacts/
+
+      - name: Install validation deps
+        run: pip install onnx onnxruntime numpy
+
+      - name: Run round-trip contract validation
+        env:
+          AES_KEY: ${{ secrets.BIONA_AES_KEY }}
+        run: |
+          python biona/lab/scripts/validate_bundle.py \
+            --bundle artifacts/*.biona \
+            --contract biona/lab/biona_contract.json \
+            --aes-key "$AES_KEY" \
+            --run-roundtrip
+
+      - name: Notify WER regression check
+        run: |
+          python biona/lab/scripts/wer_regression_check.py \
+            --metrics artifacts/*.json \
+            --threshold 0.5
+
+  # ── Terminate GPU instance ─────────────────────────────────────────────────
+  terminate-gpu:
+    name: Terminate GPU instance
+    runs-on: ubuntu-22.04
+    needs: [provision-gpu, train, validate-bundle]
+    if: always()
+
+    steps:
+      - name: Terminate Lambda instance
+        env:
+          LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
+        run: |
+          curl -s -X POST \
+            "https://cloud.lambdalabs.com/api/v1/instance-operations/terminate" \
+            -H "Authorization: Bearer $LAMBDA_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"instance_ids": ["${{ needs.provision-gpu.outputs.instance_id }}"]}'
+          echo "GPU instance ${{ needs.provision-gpu.outputs.instance_id }} terminated"

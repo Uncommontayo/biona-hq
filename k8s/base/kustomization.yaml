@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - biona-lab.yaml
+  - nora-health.yaml
+  - secrets.yaml
+  - namespace.yaml
+
+commonLabels:
+  managed-by: biona-cicd
+  owner: biona-ai-infrastructure

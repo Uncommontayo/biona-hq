@@ -1,0 +1,43 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+
+# C++ build artifacts
+biona/axon/build/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# Model files — never commit trained weights
+*.onnx
+*.biona
+*.pt
+*.pth
+
+# Secrets — never commit these
+*.key
+*.pem
+*.p12
+secrets.json
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+snie/build_msvc/

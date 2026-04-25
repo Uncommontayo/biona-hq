@@ -1,0 +1,37 @@
+FROM python:3.11-slim AS base
+
+LABEL org.opencontainers.image.title="Nora Health"
+LABEL org.opencontainers.image.description="Nora Health — Clinical AI Documentation Platform"
+LABEL org.opencontainers.image.vendor="Nora Health Ltd"
+
+ARG VERSION=dev
+ARG BUILD_DATE
+ARG GIT_SHA
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    VERSION=${VERSION}
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r nora && useradd -r -g nora nora
+WORKDIR /app
+RUN chown -R nora:nora /app
+
+COPY --chown=nora:nora nora_health/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=nora:nora nora_health/ .
+
+USER nora
+
+EXPOSE 7860
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:7860/ || exit 1
+
+CMD ["python", "app.py"]

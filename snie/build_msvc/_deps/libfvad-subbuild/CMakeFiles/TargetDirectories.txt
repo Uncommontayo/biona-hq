@@ -1,0 +1,3 @@
+C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/libfvad-populate.dir
+C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/ALL_BUILD.dir
+C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/ZERO_CHECK.dir

@@ -1,0 +1,201 @@
+name: Biona CD
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/biona
+
+jobs:
+
+  # ── Determine deployment environment ───────────────────────────────────────
+  set-environment:
+    name: Set deployment environment
+    runs-on: ubuntu-22.04
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      is_release: ${{ steps.env.outputs.is_release }}
+      version: ${{ steps.env.outputs.version }}
+
+    steps:
+      - id: env
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "version=main-${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Build and push Docker images ───────────────────────────────────────────
+  build-push:
+    name: Build and push (${{ matrix.service }})
+    runs-on: ubuntu-22.04
+    needs: set-environment
+    strategy:
+      matrix:
+        service: [lab, nora-health]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ needs.set-environment.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            GIT_SHA=${{ github.sha }}
+
+  # ── Deploy to Kubernetes ────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to ${{ needs.set-environment.outputs.environment }}
+    runs-on: ubuntu-22.04
+    needs: [set-environment, build-push]
+    environment: ${{ needs.set-environment.outputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "v1.28.0"
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Set up Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update image tags in kustomization
+        run: |
+          cd k8s/overlays/${{ needs.set-environment.outputs.environment }}
+          kustomize edit set image \
+            biona-lab=${{ env.IMAGE_PREFIX }}-lab:sha-${{ github.sha }} \
+            biona-nora=${{ env.IMAGE_PREFIX }}-nora-health:sha-${{ github.sha }}
+
+      - name: Deploy Lab service
+        run: |
+          kustomize build k8s/overlays/${{ needs.set-environment.outputs.environment }} \
+            | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/biona-lab \
+            -n biona-${{ needs.set-environment.outputs.environment }} \
+            --timeout=300s
+          kubectl rollout status deployment/biona-nora-health \
+            -n biona-${{ needs.set-environment.outputs.environment }} \
+            --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          bash scripts/smoke_test.sh \
+            ${{ needs.set-environment.outputs.environment }}
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Biona deployed to *${{ needs.set-environment.outputs.environment }}*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Version", "value": "${{ needs.set-environment.outputs.version }}", "short": true},
+                  {"title": "Triggered by", "value": "${{ github.actor }}", "short": true}
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Biona deployment to *${{ needs.set-environment.outputs.environment }}* FAILED",
+              "attachments": [{"color": "danger",
+                "fields": [{"title": "Commit", "value": "${{ github.sha }}", "short": true}]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ── Production: auto-rollback on smoke test failure ────────────────────────
+  rollback-on-failure:
+    name: Rollback production
+    runs-on: ubuntu-22.04
+    needs: [set-environment, deploy]
+    if: |
+      failure() &&
+      needs.set-environment.outputs.environment == 'production'
+
+    steps:
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Rollback deployments
+        run: |
+          kubectl rollout undo deployment/biona-lab \
+            -n biona-production
+          kubectl rollout undo deployment/biona-nora-health \
+            -n biona-production
+
+      - name: Notify rollback
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "ROLLBACK executed on Biona production",
+              "attachments": [{"color": "warning",
+                "fields": [{"title": "SHA", "value": "${{ github.sha }}", "short": true}]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

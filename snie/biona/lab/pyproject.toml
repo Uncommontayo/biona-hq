@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "biona-lab"
+version = "0.1.0"
+description = "Biona Lab — server-side Python training pipeline for the Biona speech model"
+requires-python = ">=3.11"
+dependencies = [
+    "torch==2.3.1",
+    "torchaudio==2.3.1",
+    "webdataset==0.2.86",
+    "openai==1.30.0",
+    "jsonschema==4.22.0",
+    "librosa==0.10.2",
+    "soundfile==0.12.1",
+    "numpy==1.26.4",
+    "tqdm==4.66.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.2.2", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["biona_lab*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

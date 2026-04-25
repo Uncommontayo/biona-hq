@@ -1,0 +1,150 @@
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-MKDIR.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/tmp/libfvad-populate-mkdirs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-mkdir
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-DOWNLOAD.RULE
+setlocal
+cd C:\Users\Home\Downloads\biona_axon\snie\build_msvc\_deps
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/tmp/libfvad-populate-gitclone.cmake
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-download
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-UPDATE.RULE
+setlocal
+cd C:\Users\Home\Downloads\biona_axon\snie\build_msvc\_deps\libfvad-src
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/tmp/libfvad-populate-gitupdate.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-PATCH.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-patch
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-CONFIGURE.RULE
+setlocal
+cd C:\Users\Home\Downloads\biona_axon\snie\build_msvc\_deps\libfvad-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-configure
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-BUILD.RULE
+setlocal
+cd C:\Users\Home\Downloads\biona_axon\snie\build_msvc\_deps\libfvad-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-build
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-INSTALL.RULE
+setlocal
+cd C:\Users\Home\Downloads\biona_axon\snie\build_msvc\_deps\libfvad-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-install
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\591A7C1120DB14D77D2A811C891D793E\LIBFVAD-POPULATE-TEST.RULE
+setlocal
+cd C:\Users\Home\Downloads\biona_axon\snie\build_msvc\_deps\libfvad-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-test
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\9887E679B7EA35654696EA302E22FBAB\LIBFVAD-POPULATE-COMPLETE.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/Debug
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/Debug/libfvad-populate-complete
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/libfvad-populate-prefix/src/libfvad-populate-stamp/Debug/libfvad-populate-done
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKEFILES\1ED8DDC5961DA81C6CE468AF42993D6C\LIBFVAD-POPULATE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild -BC:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild --check-stamp-file C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

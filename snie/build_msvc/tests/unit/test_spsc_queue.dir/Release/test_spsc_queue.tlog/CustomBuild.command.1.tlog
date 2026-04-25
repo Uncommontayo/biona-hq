@@ -1,0 +1,10 @@
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BIONA\AXON\TESTS\UNIT\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Home/Downloads/biona_axon/snie/biona/axon -BC:/Users/Home/Downloads/biona_axon/snie/build_msvc --check-stamp-file C:/Users/Home/Downloads/biona_axon/snie/build_msvc/tests/unit/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

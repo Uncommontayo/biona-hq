@@ -1,0 +1,10 @@
+^C:\USERS\HOME\DOWNLOADS\BIONA_AXON\SNIE\BUILD_MSVC\_DEPS\LIBFVAD-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild -BC:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild --check-stamp-file C:/Users/Home/Downloads/biona_axon/snie/build_msvc/_deps/libfvad-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -1,0 +1,241 @@
+name: Biona CI
+
+on:
+  push:
+    branches: ["main", "develop", "feature/**"]
+  pull_request:
+    branches: ["main", "develop"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/biona
+
+jobs:
+
+  # ── Axon: C++ engine build and test ────────────────────────────────────────
+  axon-build:
+    name: Axon C++ build (${{ matrix.target }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux-x86_64, android-arm64, ios-arm64]
+        include:
+          - target: linux-x86_64
+            toolchain: cmake/toolchains/linux.cmake
+            test: true
+          - target: android-arm64
+            toolchain: cmake/toolchains/android.cmake
+            test: false
+          - target: ios-arm64
+            toolchain: cmake/toolchains/ios.cmake
+            test: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: biona/axon/build/${{ matrix.target }}
+          key: axon-${{ matrix.target }}-${{ hashFiles('biona/axon/**/*.cpp', 'biona/axon/**/*.hpp', 'biona/axon/CMakeLists.txt') }}
+
+      - name: Install ONNX Runtime headers
+        run: |
+          wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.17.3/onnxruntime-linux-x64-1.17.3.tgz
+          tar -xf onnxruntime-linux-x64-1.17.3.tgz
+          sudo cp -r onnxruntime-linux-x64-1.17.3/include/* /usr/local/include/
+          sudo cp -r onnxruntime-linux-x64-1.17.3/lib/* /usr/local/lib/
+          sudo ldconfig
+
+      - name: Configure CMake
+        run: |
+          cmake -B biona/axon/build/${{ matrix.target }} \
+            -S biona/axon \
+            -DCMAKE_TOOLCHAIN_FILE=${{ matrix.toolchain }} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBIONA_BUILD_TESTS=ON
+
+      - name: Build Axon
+        run: |
+          cmake --build biona/axon/build/${{ matrix.target }} \
+            --parallel $(nproc)
+
+      - name: Run Axon unit tests
+        if: matrix.test == true
+        run: |
+          cd biona/axon/build/${{ matrix.target }}
+          ctest --output-on-failure --timeout 120
+
+      - name: Upload Axon artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: axon-${{ matrix.target }}
+          path: biona/axon/build/${{ matrix.target }}/lib/
+          retention-days: 7
+
+  # ── Lab: Python pipeline lint and unit tests ───────────────────────────────
+  lab-quality:
+    name: Lab Python quality
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Lab dependencies
+        run: |
+          pip install -r biona/lab/requirements.txt
+          pip install ruff mypy pytest pytest-cov
+
+      - name: Ruff lint
+        run: ruff check biona/lab/ --select E,W,F,I
+
+      - name: Mypy type check
+        run: mypy biona/lab/ --ignore-missing-imports --strict
+
+      - name: Pytest unit tests
+        run: |
+          pytest biona/lab/tests/ \
+            --cov=biona/lab \
+            --cov-report=xml \
+            --cov-fail-under=70 \
+            -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: lab
+
+  # ── ONNX contract validation ───────────────────────────────────────────────
+  contract-validation:
+    name: ONNX contract validation
+    runs-on: ubuntu-22.04
+    needs: [lab-quality]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install validation deps
+        run: pip install onnx onnxruntime numpy
+
+      - name: Validate contract schema
+        run: |
+          python biona/lab/scripts/validate_contract.py \
+            --contract biona/lab/biona_contract.json \
+            --strict
+
+      - name: Check contract version matches code
+        run: |
+          python - <<'EOF'
+          import json, sys
+          contract = json.load(open("biona/lab/biona_contract.json"))
+          version = contract.get("contract_version", "")
+          if not version:
+              print("ERROR: contract_version missing")
+              sys.exit(1)
+          print(f"Contract version: {version} - OK")
+          EOF
+
+  # ── Nora Health: product layer tests ──────────────────────────────────────
+  nora-tests:
+    name: Nora Health product tests
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Nora dependencies
+        run: pip install -r nora_health/requirements.txt pytest
+
+      - name: Run Nora tests
+        run: |
+          pytest nora_health/tests/ -v --timeout=60
+
+  # ── Docker build (no push on CI — push only on release) ───────────────────
+  docker-build:
+    name: Docker build check (${{ matrix.service }})
+    runs-on: ubuntu-22.04
+    needs: [lab-quality, nora-tests]
+    strategy:
+      matrix:
+        service: [lab, nora-health]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.service }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:ci-check
+
+  # ── Security scan ──────────────────────────────────────────────────────────
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-22.04
+    needs: [docker-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - name: Secret scan with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Final CI gate ──────────────────────────────────────────────────────────
+  ci-gate:
+    name: CI gate
+    runs-on: ubuntu-22.04
+    needs: [axon-build, lab-quality, contract-validation, nora-tests, security-scan]
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.axon-build.result }}" != "success" ]] || \
+             [[ "${{ needs.lab-quality.result }}" != "success" ]] || \
+             [[ "${{ needs.contract-validation.result }}" != "success" ]] || \
+             [[ "${{ needs.nora-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.security-scan.result }}" != "success" ]]; then
+            echo "One or more CI jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed"
