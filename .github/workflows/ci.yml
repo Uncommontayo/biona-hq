@@ -43,7 +43,7 @@ jobs:
       - name: Cache CMake build
         uses: actions/cache@v4
         with:
-          path: biona/axon/build/${{ matrix.target }}
+          path: snie/biona/axon/build/${{ matrix.target }}
           key: axon-${{ matrix.target }}-${{ hashFiles('biona/axon/**/*.cpp', 'biona/axon/**/*.hpp', 'biona/axon/CMakeLists.txt') }}
 
       - name: Install ONNX Runtime headers
@@ -56,28 +56,28 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -B biona/axon/build/${{ matrix.target }} \
-            -S biona/axon \
+          cmake -B snie/biona/axon/build/${{ matrix.target }} \
+            -S snie/biona/axon \
             -DCMAKE_TOOLCHAIN_FILE=${{ matrix.toolchain }} \
             -DCMAKE_BUILD_TYPE=Release \
             -DBIONA_BUILD_TESTS=ON
 
       - name: Build Axon
         run: |
-          cmake --build biona/axon/build/${{ matrix.target }} \
+          cmake --build snie/biona/axon/build/${{ matrix.target }} \
             --parallel $(nproc)
 
       - name: Run Axon unit tests
         if: matrix.test == true
         run: |
-          cd biona/axon/build/${{ matrix.target }}
+          cd snie/biona/axon/build/${{ matrix.target }}
           ctest --output-on-failure --timeout 120
 
       - name: Upload Axon artefacts
         uses: actions/upload-artifact@v4
         with:
           name: axon-${{ matrix.target }}
-          path: biona/axon/build/${{ matrix.target }}/lib/
+          path: snie/biona/axon/build/${{ matrix.target }}/lib/
           retention-days: 7
 
   # ── Lab: Python pipeline lint and unit tests ───────────────────────────────
@@ -95,18 +95,18 @@ jobs:
 
       - name: Install Lab dependencies
         run: |
-          pip install -r biona/lab/requirements.txt
+          pip install -r snie/snie/biona/lab/requirements.txt
           pip install ruff mypy pytest pytest-cov
 
       - name: Ruff lint
-        run: ruff check biona/lab/ --select E,W,F,I
+        run: ruff check snie/biona/lab/ --select E,W,F,I
 
       - name: Mypy type check
-        run: mypy biona/lab/ --ignore-missing-imports --strict
+        run: mypy snie/biona/lab/ --ignore-missing-imports --strict
 
       - name: Pytest unit tests
         run: |
-          pytest biona/lab/tests/ \
+          pytest snie/snie/biona/lab/tests/ \
             --cov=biona/lab \
             --cov-report=xml \
             --cov-fail-under=70 \
@@ -137,15 +137,15 @@ jobs:
 
       - name: Validate contract schema
         run: |
-          python biona/lab/scripts/validate_contract.py \
-            --contract biona/lab/biona_contract.json \
+          python snie/biona/lab/scripts/validate_contract.py \
+            --contract snie/biona/lab/biona_contract.json \
             --strict
 
       - name: Check contract version matches code
         run: |
           python - <<'EOF'
           import json, sys
-          contract = json.load(open("biona/lab/biona_contract.json"))
+          contract = json.load(open("snie/biona/lab/biona_contract.json"))
           version = contract.get("contract_version", "")
           if not version:
               print("ERROR: contract_version missing")
