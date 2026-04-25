@@ -41,3 +41,4 @@ Thumbs.db
 # Docker
 *.log
 snie/build_msvc/
+snie/build_msvc/

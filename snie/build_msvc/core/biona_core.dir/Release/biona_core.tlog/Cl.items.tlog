@@ -1,7 +1,0 @@
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\signal.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\signal.obj
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\inference_engine_factory.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\inference_engine_factory.obj
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\onnx_contract.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\onnx_contract.obj
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\vad\webrtc_vad.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\webrtc_vad.obj
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\vad\energy_vad.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\energy_vad.obj
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\vad\vad_factory.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\vad_factory.obj
-C:\Users\Home\Downloads\biona_axon\snie\biona\axon\core\src\signal_thread_pool.cpp;C:\Users\Home\Downloads\biona_axon\snie\build_msvc\core\biona_core.dir\Release\signal_thread_pool.obj
