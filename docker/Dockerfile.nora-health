@@ -22,10 +22,10 @@ RUN groupadd -r nora && useradd -r -g nora nora
 WORKDIR /app
 RUN chown -R nora:nora /app
 
-COPY --chown=nora:nora nora_health/requirements.txt .
+COPY --chown=nora:nora snie/biona/lab/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=nora:nora nora_health/ .
+COPY --chown=nora:nora snie/biona/lab/ .
 
 USER nora
 

@@ -30,12 +30,12 @@ WORKDIR /app
 RUN chown -R biona:biona /app
 
 # ── Python dependencies (cached layer) ───────────────────────────────────────
-COPY --chown=biona:biona biona/lab/requirements.txt .
+COPY --chown=biona:biona snie/biona/lab/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Application code ──────────────────────────────────────────────────────────
-COPY --chown=biona:biona biona/lab/ .
-COPY --chown=biona:biona biona/lab/biona_contract.json .
+COPY --chown=biona:biona snie/biona/lab/ .
+COPY --chown=biona:biona snie/biona/lab/biona_contract.json .
 
 USER biona
 
